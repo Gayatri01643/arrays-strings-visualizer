@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Arrays and Strings Visualizer</title>
+<style>
+:root{--ink:#1f2933;--mut:#5f6b7a;--line:#d5dbe3;--accent:#1f3a5f;--cmp:#f2c94c;--found:#4caf7d;--move:#e08a4b;--done:#9db7d5;--new:#6c8ebf;--bad:#d9534f;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+body{margin:0;color:var(--ink);font:15px/1.55 "Segoe UI",Arial,Helvetica,sans-serif;min-height:100vh;background:#f4f6f9}
+.page{max-width:1180px;margin:0 auto;padding:0 16px 40px}
+.hero{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;background:var(--accent);color:#fff;padding:18px 22px;margin:0 -16px}
+h1{margin:0;font:600 clamp(20px,3.5vw,26px)/1.2 "Segoe UI",Arial,sans-serif}
+.hero p{margin:4px 0 0;font-size:14px;color:#cdd8e6}
+.tabs{display:flex;gap:0;border:1px solid #6f87a8;border-radius:4px;overflow:hidden}
+button{font:inherit;font-size:14px;font-weight:500;padding:7px 14px;border:1px solid #aab4c0;border-radius:4px;background:#fff;color:var(--ink);cursor:pointer}
+button:hover:not(:disabled){background:#eaeff5;border-color:var(--accent)}
+button:disabled{opacity:.45;cursor:not-allowed}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tabs button{border:0;border-radius:0;background:transparent;color:#fff;padding:8px 22px}
+.tabs button:hover:not(:disabled){background:rgba(255,255,255,.12)}
+.tabs button.on{background:#fff;color:var(--accent)}
+.grid{display:grid;grid-template-columns:280px 1fr;gap:16px;margin-top:18px}
+@media(max-width:820px){.grid{grid-template-columns:1fr}}
+.rail,.stagecard,.card{background:#fff;border:1px solid var(--line);border-radius:6px}
+.rail{padding:16px}
+h2{font:600 16px "Segoe UI",Arial,sans-serif;margin:0 0 10px;color:var(--accent);padding-bottom:6px;border-bottom:1px solid var(--line)}
+.bar{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.bar input,#bLoad{grid-column:1/-1}
+input[type=text],input[type=number]{padding:8px 10px;border:1px solid #aab4c0;border-radius:4px;background:#fff;color:var(--ink);font:inherit}
+.go,.op[data-k=add],.op[data-k=ins],#bLoad{background:var(--accent);color:#fff;border-color:var(--accent)}
+.go:hover:not(:disabled),.op[data-k=add]:hover:not(:disabled),.op[data-k=ins]:hover:not(:disabled),#bLoad:hover:not(:disabled){background:#2c4f7c;border-color:#2c4f7c}
+.stagecard{overflow:hidden}
+#stage{min-height:240px;display:flex;flex-wrap:wrap;gap:10px;align-content:center;justify-content:center;padding:28px 12px;background:#fafbfc;border-bottom:1px solid var(--line)}
+.cell{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:56px}
+.ptr{height:18px;font:600 13px Consolas,monospace;color:var(--accent)}
+.box{width:56px;height:56px;border-radius:4px;border:1px solid #7b8794;display:grid;place-items:center;font:600 20px Consolas,"Courier New",monospace;background:#fff;color:var(--ink);transition:background .15s}
+.ix{font:12px Consolas,monospace;color:var(--mut)}
+.cell.cmp .box{background:var(--cmp)}
+.cell.found .box{background:var(--found);color:#fff}
+.cell.move .box{background:var(--move);color:#fff}
+.cell.new .box{background:var(--new);color:#fff}
+.cell.done .box{background:var(--done)}
+.cell.bad .box{background:var(--bad);color:#fff}
+.empty{color:var(--mut)}
+#note{text-align:center;color:var(--accent);font:600 14px Consolas,monospace;min-height:26px;padding-top:8px}
+#msg{margin:6px 14px 10px;padding:10px 14px;background:#eef2f7;border-left:4px solid var(--accent);border-radius:3px;text-align:left;min-height:44px}
+.play{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;padding:0 14px 10px;font-size:13px}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--mut);flex-wrap:wrap;justify-content:center;padding:0 14px 14px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:2px;border:1px solid #7b8794;margin-right:5px;vertical-align:-2px}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:16px}
+@media(max-width:1000px){.cards{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.cards{grid-template-columns:1fr}}
+.card{padding:16px}
+.card p,.card li{font-size:13.5px;margin:4px 0}
+.card ul{padding-left:18px;margin:4px 0}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td{padding:5px 6px;border-bottom:1px solid #e3e8ee}
+tr.on td{background:#e3ebf5;font-weight:600}
+#log,#hist{list-style:none;padding:0;margin:0;font:12.5px/1.6 Consolas,monospace}
+#log{max-height:210px;overflow:auto}
+#log li,#hist li{border-bottom:1px solid #e3e8ee;padding:2px 0}
+@media(prefers-reduced-motion:reduce){.box,button{transition:none}}
+</style>
+</head>
+<body>
+<div class="page">
+<header class="hero">
+  <div>
+    <h1>Arrays and Strings Visualizer</h1>
+    <p>Step-by-step demonstration of common array and string operations.</p>
+  </div>
+  <div class="tabs"><button id="tA" class="on">Array</button><button id="tS">String</button></div>
+</header>
+
+<div class="grid">
+  <aside class="rail">
+    <h2>Controls</h2>
+    <div class="bar" id="bar"></div>
+  </aside>
+  <section class="stagecard">
+    <div id="stage" aria-live="polite"></div>
+    <div id="note"></div>
+    <div id="msg">Select an operation from the control panel.</div>
+    <div class="play">
+      <button id="bStop" disabled>Stop</button><button id="bPause" disabled>Pause</button><button id="bStep" disabled>Step</button>
+      <label>Speed <input type="range" id="spd" min="120" max="1200" value="650" style="direction:rtl;vertical-align:middle"></label>
+    </div>
+    <div class="legend"><span><i style="background:var(--cmp)"></i>Comparing</span><span><i style="background:var(--found)"></i>Found</span><span><i style="background:var(--move)"></i>Shift / swap</span><span><i style="background:var(--new)"></i>New value</span><span><i style="background:var(--done)"></i>Completed</span></div>
+  </section>
+</div>
+
+<div class="cards">
+  <section class="card c1"><h2>Overview</h2><div id="about"></div></section>
+  <section class="card c2"><h2>Time Complexity</h2><table id="tbl"></table></section>
+  <section class="card c3"><h2>Step Log</h2><ul id="log"></ul></section>
+  <section class="card c4"><h2>Saved Runs</h2><ul id="hist"></ul></section>
+</div>
+</div>
+<script>
+/* ===== STATE ===== */
+let mode = 'array';          // 'array' or 'string'
+let L = [];                  // ARRAY of items. For strings, each item is one character
+let hl = {}, ptr = {};       // highlight classes and pointer labels by index
+let gen = null, timer = null, paused = false;
+const $ = id => document.getElementById(id);
+const MAX = 14;
+
+const INFO = {
+  array: {
+    about: '<p>An <b>array</b> stores items one after another in continuous memory. Each item has an index starting at 0.</p><ul><li>Access by index is O(1)</li><li>Insert or delete in the middle shifts items</li><li>Same data type for every item</li></ul>',
+    ops: { add: ['Add to end', 'O(1)'], ins: ['Insert at index', 'O(n)'], del: ['Delete at index', 'O(n)'], sea: ['Linear search', 'O(n)'], sor: ['Bubble sort', 'O(n²)'], rev: ['Reverse (two pointers)', 'O(n)'] }
+  },
+  string: {
+    about: '<p>A <b>string</b> is an array of characters. Each character has an index starting at 0.</p><ul><li>Reading a character by index is O(1)</li><li>Strings are often immutable, so edits make a new string</li><li>Many string problems use two pointers or a frequency map</li></ul>',
+    ops: { srev: ['Reverse', 'O(n)'], pal: ['Palindrome check', 'O(n)'], vow: ['Count vowels', 'O(n)'], sub: ['Find substring (naive)', 'O(n·m)'], frq: ['Character frequency', 'O(n)'] }
+  }
+};
+
+/* ===== RENDER ===== */
+function render() {
+  const st = $('stage'); st.innerHTML = '';
+  if (!L.length) st.innerHTML = '<span class="empty">Empty. ' + (mode === 'array' ? 'Add a number below.' : 'Load a string below.') + '</span>';
+  L.forEach((v, i) => {
+    const c = document.createElement('div');
+    c.className = 'cell ' + (hl[i] || ''); c.style.setProperty('--h', (i * 47 + 200) % 360);
+    c.innerHTML = '<span class="ptr">' + (ptr[i] || '') + '</span><div class="box">' + (v === undefined ? '' : v === ' ' ? '␣' : v) + '</div><span class="ix">[' + i + ']</span>';
+    st.appendChild(c);
+  });
+}
+function log(m) { const li = document.createElement('li'); li.textContent = m; $('log').prepend(li); }
+function say(m) { $('msg').textContent = m; }
+function showInfo(activeKey) {
+  $('about').innerHTML = INFO[mode].about;
+  $('tbl').innerHTML = Object.entries(INFO[mode].ops).map(([k, [n, b]]) => '<tr class="' + (k === activeKey ? 'on' : '') + '"><td>' + n + '</td><td>' + b + '</td></tr>').join('');
+}
+function buildBar() {
+  const A = mode === 'array';
+  $('bar').innerHTML = (A
+    ? '<input type="text" id="inp" placeholder="value, e.g. 42"><input type="number" id="idx" placeholder="index">'
+    : '<input type="text" id="inp" placeholder="text or pattern"><button id="bLoad" class="go">Load string</button>') +
+    (A
+    ? '<button class="go op" data-k="add">Add to end</button><button class="go op" data-k="ins">Insert at index</button><button class="op" data-k="del">Delete at index</button><button class="op" data-k="sea">Search</button><button class="op" data-k="sor">Sort</button><button class="op" data-k="rev">Reverse</button><button id="bRnd">Random</button><button id="bClr">Clear</button>'
+    : '<button class="op" data-k="srev">Reverse</button><button class="op" data-k="pal">Palindrome</button><button class="op" data-k="vow">Count vowels</button><button class="op" data-k="sub">Find substring</button><button class="op" data-k="frq">Frequency</button>');
+  document.querySelectorAll('.op').forEach(b => b.onclick = () => start(b.dataset.k));
+  if ($('bRnd')) { $('bRnd').onclick = () => { stop(); L = Array.from({ length: 7 }, () => 10 + Math.floor(Math.random() * 90)); render(); say('Filled with 7 random numbers.'); }; $('bClr').onclick = () => { stop(); L = []; render(); say('Cleared.'); }; }
+  if ($('bLoad')) $('bLoad').onclick = () => { const t = $('inp').value; if (!t) return say('Type some text first, then press Load string.'); stop(); L = [...t].slice(0, MAX); render(); say('Loaded "' + L.join('') + '" as ' + L.length + ' characters.' + (t.length > MAX ? ' Trimmed to ' + MAX + '.' : '')); };
+}
+function setMode(m) {
+  stop(); mode = m; hl = {}; ptr = {}; $('log').innerHTML = ''; $('note').textContent = '';
+  L = m === 'array' ? [34, 7, 19, 52, 3] : [...'racecar'];
+  $('tA').classList.toggle('on', m === 'array'); $('tS').classList.toggle('on', m === 'string');
+  buildBar(); showInfo(''); render(); say(m === 'array' ? 'Array loaded. Select an operation.' : 'String "racecar" loaded. Select an operation.');
+}
+
+/* ===== ENGINE: each operation is a generator that yields one frame per step ===== */
+function lock(on) {
+  document.querySelectorAll('.bar button,.bar input,.tabs button').forEach(e => e.disabled = on);
+  $('bStop').disabled = !on; $('bPause').disabled = !on; $('bStep').disabled = !on || !paused;
+}
+function tick() {
+  clearTimeout(timer);
+  if (!gen) return;
+  const r = gen.next();
+  if (r.done) { finish(); saveRun(); return; }
+  const f = r.value; hl = f.hl || {}; ptr = f.ptr || {};
+  if (f.msg) { say(f.msg); log(f.msg); }
+  if (f.note !== undefined) $('note').textContent = f.note;
+  render();
+  if (!paused) timer = setTimeout(tick, +$('spd').value);
+}
+function finish() { gen = null; paused = false; hl = {}; ptr = {}; $('bPause').textContent = 'Pause'; lock(false); render(); }
+function stop() { clearTimeout(timer); if (gen) { gen = null; say('Stopped.'); } paused = false; hl = {}; ptr = {}; $('bPause').textContent = 'Pause'; lock(false); render(); }
+function start(k) {
+  const g = makeGen(k); if (!g) return;
+  curOp = k;
+  showInfo(k); $('note').textContent = ''; gen = g; paused = false; lock(true); tick();
+}
+$('bStop').onclick = stop;
+$('bPause').onclick = () => { paused = !paused; $('bPause').textContent = paused ? 'Resume' : 'Pause'; $('bStep').disabled = !paused; if (!paused) tick(); else clearTimeout(timer); };
+$('bStep').onclick = () => { if (paused) tick(); };
+$('tA').onclick = () => setMode('array'); $('tS').onclick = () => setMode('string');
+
+/* ===== BACKEND CALLS: save and load runs through the Python server ===== */
+let curOp = '';
+async function saveRun() {
+  try {
+    await fetch('/api/history', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode, op: INFO[mode].ops[curOp][0], data: L.join(',') }) });
+    loadRuns();
+  } catch (e) { /* server not running, the site still works */ }
+}
+async function loadRuns() {
+  try {
+    const d = await (await fetch('/api/history')).json();
+    $('hist').innerHTML = d.slice(-6).reverse().map(x => '<li>' + x.mode + ': ' + x.op + ' → [' + x.data + ']</li>').join('') || '<li>No runs saved yet.</li>';
+  } catch (e) { $('hist').innerHTML = '<li>Server not running. Start it with: python server.py</li>'; }
+}
+
+/* ===== INPUT CHECKS ===== */
+function num() { const s = $('inp').value.trim(); if (s === '' || !Number.isInteger(+s)) { say('Type a whole number in the box first.'); return null; } return +s; }
+function index(max) { const s = $('idx').value; if (s === '' || !Number.isInteger(+s) || +s < 0 || +s > max) { say('Index must be a whole number from 0 to ' + max + '.'); return null; } return +s; }
+
+function makeGen(k) {
+  if (mode === 'array') {
+    if (k === 'add') { const v = num(); if (v === null) return; if (L.length >= MAX) { say('Array is full (' + MAX + '). Delete something first.'); return; } return gAdd(v); }
+    if (k === 'ins') { const v = num(); if (v === null) return; if (L.length >= MAX) { say('Array is full (' + MAX + ').'); return; } const i = index(L.length); if (i === null) return; return gIns(v, i); }
+    if (k === 'del') { if (!L.length) { say('Array is empty.'); return; } const i = index(L.length - 1); if (i === null) return; return gDel(i); }
+    if (k === 'sea') { const v = num(); if (v === null) return; if (!L.length) { say('Array is empty.'); return; } return gSea(v); }
+    if (k === 'sor') { if (L.length < 2) { say('Need at least 2 values.'); return; } return gSort(); }
+    if (k === 'rev') { if (L.length < 2) { say('Need at least 2 values.'); return; } return gRev('array'); }
+  } else {
+    if (!L.length) { say('Load a string first.'); return; }
+    if (k === 'srev') return gRev('string');
+    if (k === 'pal') return gPal();
+    if (k === 'vow') return gVow();
+    if (k === 'frq') return gFrq();
+    if (k === 'sub') { const p = $('inp').value; if (!p) { say('Type the pattern to look for in the box.'); return; } return gSub([...p]); }
+  }
+}
+
+/* ===== ARRAY OPERATIONS ===== */
+// Append at index length. No shifting, so O(1).
+function* gAdd(v) { L.push(v); yield { hl: { [L.length - 1]: 'new' }, msg: 'arr[' + (L.length - 1) + '] = ' + v + '. No shifting needed, O(1).' }; }
+
+// Insert in the middle: every item after the index shifts right, so O(n).
+function* gIns(v, i) {
+  L.length++;
+  for (let k = L.length - 1; k > i; k--) { L[k] = L[k - 1]; yield { hl: { [k]: 'move', [k - 1]: 'cmp' }, msg: 'Shift arr[' + (k - 1) + '] right to arr[' + k + '].' }; }
+  L[i] = v; yield { hl: { [i]: 'new' }, msg: 'Place ' + v + ' at index ' + i + '.' };
+}
+
+// Delete: items after the index shift left to close the gap, so O(n).
+function* gDel(i) {
+  const gone = L[i];
+  for (let k = i; k < L.length - 1; k++) { L[k] = L[k + 1]; yield { hl: { [k]: 'move', [k + 1]: 'cmp' }, msg: 'Shift arr[' + (k + 1) + '] left to arr[' + k + '].' }; }
+  L.pop(); yield { msg: 'Removed ' + gone + '. Length is now ' + L.length + '.' };
+}
+
+// Linear search: check each index from 0. Worst case n checks, O(n).
+function* gSea(v) {
+  for (let i = 0; i < L.length; i++) {
+    yield { hl: { [i]: 'cmp' }, msg: 'Is arr[' + i + '] = ' + v + '?  (' + L[i] + ')' };
+    if (L[i] === v) { yield { hl: { [i]: 'found' }, msg: 'Found ' + v + ' at index ' + i + ' after ' + (i + 1) + ' checks.' }; return; }
+  }
+  yield { msg: v + ' is not in the array. Checked all ' + L.length + ' items.' };
+}
+
+// Bubble sort: compare neighbours and swap. Two nested loops, O(n^2).
+function* gSort() {
+  const n = L.length;
+  for (let p = 0; p < n - 1; p++) {
+    let swapped = false;
+    for (let j = 0; j < n - 1 - p; j++) {
+      const sorted = {}; for (let d = n - p; d < n; d++) sorted[d] = 'done';
+      yield { hl: { ...sorted, [j]: 'cmp', [j + 1]: 'cmp' }, msg: 'Pass ' + (p + 1) + ': compare ' + L[j] + ' and ' + L[j + 1] + '.' };
+      if (L[j] > L[j + 1]) { [L[j], L[j + 1]] = [L[j + 1], L[j]]; swapped = true; yield { hl: { ...sorted, [j]: 'move', [j + 1]: 'move' }, msg: 'Swap, ' + L[j + 1] + ' is bigger so it moves right.' }; }
+    }
+    if (!swapped) break;
+  }
+  const all = {}; L.forEach((_, i) => all[i] = 'done'); yield { hl: all, msg: 'Sorted.' };
+}
+
+/* ===== SHARED: two pointers, works on array and string ===== */
+// Reverse: swap items at i and j, then move i forward and j backward. O(n).
+function* gRev(kind) {
+  let i = 0, j = L.length - 1;
+  while (i < j) {
+    yield { hl: { [i]: 'cmp', [j]: 'cmp' }, ptr: { [i]: 'i', [j]: 'j' }, msg: 'Pointers at ' + i + ' and ' + j + '.' };
+    [L[i], L[j]] = [L[j], L[i]];
+    yield { hl: { [i]: 'move', [j]: 'move' }, ptr: { [i]: 'i', [j]: 'j' }, msg: 'Swap ' + L[j] + ' and ' + L[i] + '.' };
+    i++; j--;
+  }
+  const all = {}; L.forEach((_, x) => all[x] = 'done');
+  yield { hl: all, msg: 'Reversed.', note: kind === 'string' ? 'Result: ' + L.join('') : '' };
+}
+
+/* ===== STRING OPERATIONS ===== */
+// Palindrome: compare the first and last character, move inward. O(n).
+function* gPal() {
+  let i = 0, j = L.length - 1;
+  while (i < j) {
+    const a = L[i].toLowerCase(), b = L[j].toLowerCase();
+    yield { hl: { [i]: 'cmp', [j]: 'cmp' }, ptr: { [i]: 'i', [j]: 'j' }, msg: 'Compare "' + L[i] + '" and "' + L[j] + '".' };
+    if (a !== b) { yield { hl: { [i]: 'bad', [j]: 'bad' }, msg: 'Mismatch, so it is NOT a palindrome.', note: '"' + L.join('') + '" is not a palindrome' }; return; }
+    yield { hl: { [i]: 'found', [j]: 'found' }, ptr: { [i]: 'i', [j]: 'j' }, msg: 'Match. Move both pointers inward.' };
+    i++; j--;
+  }
+  const all = {}; L.forEach((_, x) => all[x] = 'found');
+  yield { hl: all, msg: 'All pairs matched. It is a palindrome!', note: '"' + L.join('') + '" is a palindrome' };
+}
+
+// Count vowels: scan each character once and test it. O(n).
+function* gVow() {
+  let c = 0;
+  for (let i = 0; i < L.length; i++) {
+    const v = 'aeiou'.includes(L[i].toLowerCase()); if (v) c++;
+    yield { hl: { [i]: v ? 'found' : 'cmp' }, msg: '"' + L[i] + '" is ' + (v ? 'a vowel' : 'not a vowel') + '.', note: 'Vowels so far: ' + c };
+  }
+  yield { msg: 'Total vowels: ' + c + '.', note: 'Vowels: ' + c };
+}
+
+// Naive substring search: slide the pattern over the text and compare. O(n*m).
+function* gSub(p) {
+  const n = L.length, m = p.length;
+  if (m > n) { yield { msg: 'The pattern is longer than the string, so no match.' }; return; }
+  for (let s = 0; s <= n - m; s++) {
+    let ok = true;
+    for (let k = 0; k < m; k++) {
+      yield { hl: { [s + k]: 'cmp' }, ptr: { [s]: 'start' }, msg: 'Start ' + s + ': compare "' + L[s + k] + '" with "' + p[k] + '".' };
+      if (L[s + k] !== p[k]) { ok = false; break; }
+    }
+    if (ok) { const h = {}; for (let k = 0; k < m; k++) h[s + k] = 'found'; yield { hl: h, ptr: { [s]: 'start' }, msg: 'Found "' + p.join('') + '" starting at index ' + s + '.', note: 'Match at index ' + s }; return; }
+  }
+  yield { msg: '"' + p.join('') + '" not found.', note: 'No match' };
+}
+
+// Frequency: a hash map {char: count} filled in one pass. O(n).
+function* gFrq() {
+  const f = {};
+  for (let i = 0; i < L.length; i++) {
+    const ch = L[i]; f[ch] = (f[ch] || 0) + 1;
+    yield { hl: { [i]: 'cmp' }, msg: 'Count of "' + ch + '" is now ' + f[ch] + '.', note: JSON.stringify(f).replace(/"/g, '') };
+  }
+  yield { msg: 'Done. Each character was counted once.' };
+}
+
+setMode('array');
+loadRuns();
+</script>
+</body>
+</html>
